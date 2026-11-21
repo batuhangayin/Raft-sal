@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#06121e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>STRANDED TIDE — Mobile 3D Survival</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+    <div id="underwater-tint"></div>
+    <div id="lightning-flash"></div>
+    <div id="damage-vignette"></div>
+    <div id="crosshair"></div>
+
+    <!-- Üst Bilgi Barı -->
+    <header id="top-hud">
+        <div class="hud-pill">
+            <span id="weather-icon">☀️</span>
+            <span id="weather-text">Açık Hava</span>
+            <span class="divider">|</span>
+            <span id="day-counter">Gün 1</span>
+            <span class="divider">|</span>
+            <span id="time-display">08:30</span>
+        </div>
+
+        <div class="hud-pill compass-pill">
+            <span>⛵ <strong id="anchor-status-text">SÜRÜKLENİYOR</strong></span>
+            <span class="divider">|</span>
+            <span>🧭 <strong id="island-dist-text">-- m</strong></span>
+        </div>
+
+        <div class="hud-pill">
+            <button id="btn-save-game" class="mini-btn" title="Oyunu Kaydet">💾</button>
+            <button id="btn-pause-menu" class="mini-btn" title="Ayarlar & Duraklat">⚙️</button>
+        </div>
+    </header>
+
+    <!-- Sol Sütun: Durum Barları + Görev -->
+    <aside id="left-column">
+        <div id="status-panel">
+            <div class="stat-row">
+                <span class="stat-icon">❤️</span>
+                <div class="stat-info">
+                    <div class="stat-header"><span>Sağlık</span><span id="val-health">100%</span></div>
+                    <div class="stat-track"><div id="fill-health" class="stat-fill health"></div></div>
+                </div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">🍖</span>
+                <div class="stat-info">
+                    <div class="stat-header"><span>Açlık</span><span id="val-hunger">100%</span></div>
+                    <div class="stat-track"><div id="fill-hunger" class="stat-fill hunger"></div></div>
+                </div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">💧</span>
+                <div class="stat-info">
+                    <div class="stat-header"><span>Susuzluk</span><span id="val-thirst">100%</span></div>
+                    <div class="stat-track"><div id="fill-thirst" class="stat-fill thirst"></div></div>
+                </div>
+            </div>
+            <div class="stat-row" id="oxygen-row" style="display:none;">
+                <span class="stat-icon">🫧</span>
+                <div class="stat-info">
+                    <div class="stat-header"><span>Oksijen</span><span id="val-oxygen">100%</span></div>
+                    <div class="stat-track"><div id="fill-oxygen" class="stat-fill oxygen"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="quest-panel">
+            <div class="quest-title">📜 GÖREV</div>
+            <div id="quest-name">Bölüm 1: Yüzen Sığınak</div>
+            <div id="quest-desc">Salını en az 8 bloğa genişlet.</div>
+            <div class="quest-progress-bg"><div id="quest-progress-fill"></div></div>
+        </div>
+    </aside>
+
+    <!-- Sağ Üst: Kaynak Envanteri -->
+    <aside id="resource-panel">
+        <div class="res-badge" title="Kalas">🪵 <span id="res-plank">6</span></div>
+        <div class="res-badge" title="Plastik">🧴 <span id="res-plastic">6</span></div>
+        <div class="res-badge" title="Yaprak">🌿 <span id="res-leaf">4</span></div>
+        <div class="res-badge" title="Hurda">⚙️ <span id="res-scrap">0</span></div>
+        <div class="res-badge" title="Taş">🪨 <span id="res-stone">0</span></div>
+        <div class="res-badge" title="Yosun">🪸 <span id="res-kelp">0</span></div>
+        <div class="res-badge" title="Patates">🥔 <span id="res-potato">1</span></div>
+        <div class="res-badge" title="Balık">🐟 <span id="res-fish">1</span></div>
+        <div class="res-badge" title="Yemek">🍣 <span id="res-cooked">0</span></div>
+        <div class="res-badge" title="Antik Kalıntı">🏺 <span id="res-relic">0</span>/3</div>
+    </aside>
+
+    <!-- Orta Ekran Uyarıları -->
+    <div id="charge-bar-wrap"><div id="charge-bar-fill"></div></div>
+    <div id="interaction-prompt"></div>
+    <div id="toast-container"></div>
+    <div id="danger-alert">⚠️ TEHLİKE!</div>
+
+    <!-- MOBİL DOKUNMATİK KONTROLLER -->
+    <div id="touch-controls">
+        <!-- Sol: Sanal Analog (Joystick) -->
+        <div id="joystick-zone">
+            <div id="joystick-base">
+                <div id="joystick-thumb"></div>
+            </div>
+        </div>
+
+        <!-- Sağ: Dokunmatik Kamera Bakış Alanı -->
+        <div id="look-zone"></div>
+
+        <!-- Sağ Alt: Hızlı Eylem Butonları -->
+        <div id="action-pad">
+            <button id="touch-interact" class="touch-btn" title="Etkileşim [E]">✋<span>Kullan</span></button>
+            <button id="touch-dive" class="touch-btn" title="Dal [Q]">🫧<span>Dal</span></button>
+            <button id="touch-jump" class="touch-btn" title="Zıpla">⬆️<span>Zıpla</span></button>
+            <button id="touch-deconstruct" class="touch-btn" title="Sök [X]">♻️<span>Sök</span></button>
+            <button id="touch-primary" class="touch-btn primary-touch" title="At / Kullan">🎯<span>Aksiyon</span></button>
+        </div>
+    </div>
+
+    <!-- Alt Hotbar -->
+    <nav id="hotbar">
+        <div class="hotbar-slot active" data-slot="1">
+            <span class="key-hint">1</span>
+            <span class="item-icon" id="icon-slot-1">🪝</span>
+            <span class="item-name" id="name-slot-1">Kanca</span>
+        </div>
+        <div class="hotbar-slot" data-slot="2">
+            <span class="key-hint">2</span>
+            <span class="item-icon">🔨</span>
+            <span class="item-name">Çekiç</span>
+        </div>
+        <div class="hotbar-slot" data-slot="3">
+            <span class="key-hint">3</span>
+            <span class="item-icon" id="icon-slot-3">🔱</span>
+            <span class="item-name" id="name-slot-3">Mızrak</span>
+        </div>
+        <div class="hotbar-slot" data-slot="4">
+            <span class="key-hint">4</span>
+            <span class="item-icon">🎣</span>
+            <span class="item-name">Olta</span>
+        </div>
+        <div class="hotbar-slot" data-slot="5">
+            <span class="key-hint">5</span>
+            <span class="item-icon" id="icon-slot-5">🪓</span>
+            <span class="item-name" id="name-slot-5">Balta</span>
+        </div>
+        <div class="hotbar-slot action-slot" id="btn-eat-cooked">
+            <span class="key-hint">F</span>
+            <span class="item-icon">🍣</span>
+            <span class="item-name">Ye</span>
+        </div>
+        <div class="hotbar-slot action-slot" id="btn-toggle-craft">
+            <span class="key-hint">C</span>
+            <span class="item-icon">🛠️</span>
+            <span class="item-name">Üretim</span>
+        </div>
+    </nav>
+
+    <!-- Üretim Menüsü -->
+    <section id="craft-modal" class="modal-box">
+        <div class="modal-header">
+            <h2>🛠️ Üretim, Tarım & Mimari</h2>
+            <button id="btn-close-craft" class="close-btn">✕</button>
+        </div>
+        <div class="craft-tabs">
+            <button class="tab-btn active" data-tab="survival">Hayatta Kalma</button>
+            <button class="tab-btn" data-tab="architecture">2. Kat & Mimari</button>
+            <button class="tab-btn" data-tab="tools">Tier 2 Aletler</button>
+            <button class="tab-btn" data-tab="navigation">Navigasyon</button>
+        </div>
+        <div id="craft-list" class="craft-list"></div>
+    </section>
+
+    <!-- Depolama Sandığı Modalı -->
+    <section id="storage-modal" class="modal-box">
+        <div class="modal-header">
+            <h2>📦 Sal Depolama Sandığı</h2>
+            <button id="btn-close-storage" class="close-btn">✕</button>
+        </div>
+        <div id="storage-list" class="craft-list"></div>
+    </section>
+
+    <!-- Duraklatma & Ayarlar Modalı -->
+    <section id="pause-modal" class="modal-box">
+        <div class="modal-header">
+            <h2>⚙️ Oyun Ayarları</h2>
+            <button id="btn-resume-game" class="close-btn">✕</button>
+        </div>
+        <div class="settings-body">
+            <div class="setting-row">
+                <label for="sens-slider">Bakış Hassasiyeti: <strong id="sens-val">1.0x</strong></label>
+                <input type="range" id="sens-slider" min="0.3" max="2.5" step="0.1" value="1.0">
+            </div>
+            <div class="setting-row">
+                <label>Ses & Dinamik Müzik</label>
+                <button id="btn-toggle-sound-modal" class="craft-action-btn">🔊 Açık</button>
+            </div>
+            <div class="setting-row">
+                <label>İlerleme Kaydı</label>
+                <button id="btn-save-modal" class="craft-action-btn">💾 Kaydet</button>
+            </div>
+            <button id="btn-resume-big" class="primary-btn" style="width:100%; margin-top:8px;">DEVAM ET</button>
+        </div>
+    </section>
+
+    <!-- Ana Menü / Zafer / Oyun Sonu -->
+    <div id="main-menu">
+        <div class="menu-card">
+            <span class="badge-tag" id="menu-badge">MOBILE & WEB • 3D OCEAN SURVIVAL</span>
+            <h1 id="menu-title">STRANDED TIDE</h1>
+            <p id="menu-subtitle">Salını kur, otomatik ağlar ve tarım ile hayatta kal, mercanlara ve batık gemilere dal, 3 Antik Kalıntı ile kurtul!</p>
+
+            <div id="endgame-stats" class="endgame-stats" style="display:none;"></div>
+
+            <div class="controls-grid" id="controls-help">
+                <div><strong>Mobil:</strong> Sol analog ile yürü, sağ ekranı kaydırarak bak, sağ alt butonlarla kanca at/kullan.</div>
+                <div><strong>PC:</strong> WASD + Space | Fare ile bak | [E] Kullan | [Q/Shift] Suda Dal | [C] Üretim</div>
+            </div>
+
+            <div class="menu-actions">
+                <button id="btn-new-game" class="primary-btn">OYUNA BAŞLA</button>
+                <button id="btn-load-game" class="secondary-btn" style="display:none;">KAYDI YÜKLE</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
